@@ -61,8 +61,6 @@ def download_images(html):
   imgurls = get_image_urls(html)
   for imgurl in imgurls:
     media_id = get_id(imgurl)
-    logging.info('Image url: {}'.format(imgurl))
-    logging.info('Image id: {}'.format(media_id))
     if media_id not in images:
       logging.info('New image found: {}'.format(media_id))
       images_metadata.write('{}\n'.format(media_id))
@@ -151,7 +149,6 @@ videos_metadata = open(videos_metadata_path, 'a+')
 videos_metadata.seek(0)
 videos = videos_metadata.read().splitlines()
 
-logging.info('Crawling latest profile information...')
 if args.historical is not None:
   historical_extraction(profile_name, int(npages))
 else:
