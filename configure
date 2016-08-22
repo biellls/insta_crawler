@@ -1,0 +1,26 @@
+#!/bin/bash
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  ## Linux
+  PHANTOMJS_URL="https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-i686.tar.bz2"
+  echo Downloading phantomjs tar.bz for Linux...
+  wget $PHANTOMJS_URL
+  echo Extracting phantomjs tar.bz...
+  tar jxf phantomjs-2.1.1-linux-i686.tar.bz2
+  echo Moving phantomjs binary to current directory...
+  mv phantomjs-2.1.1-linux-i686/bin/phantomjs phantomjs
+  echo Cleaning up
+  rm phantomjs-2.1.1-linux-i686.tar.bz2
+  rm -rf phantomjs-2.1.1-linux-i686
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  # Mac OSX
+  PHANTOMJS_URL="https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-macosx.zip"
+  echo Downloading phantomjs zip for OS X...
+  wget $PHANTOMJS_URL
+  echo Extracting phantomjs zip...
+  unzip phantomjs-2.1.1-macosx.zip
+  echo Moving phantomjs binary to current directory...
+  mv phantomjs-2.1.1-macosx/bin/phantomjs phantomjs
+  echo Cleaning up
+  rm phantomjs-2.1.1-macosx.zip
+  rm -rf phantomjs-2.1.1-macosx/
+fi
