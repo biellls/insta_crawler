@@ -6,6 +6,10 @@ import urllib2
 import re
 import json
 import logging
+import smtplib
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from ConfigParser import ConfigParser
 from bs4 import BeautifulSoup
 
 
@@ -100,18 +104,54 @@ def latest_extraction(profile):
       media_type = 'videos' if file['is_video'] else 'images'
       if media_type == 'images':
         images_metadata.write('{}\n'.format(media_id))
-        logging.info('New image found: {}'.format(media_id))
+        notification_msg = 'New image found in profie {}: {}'.format(profile_name, media_id)
       elif media_type == 'videos':
         videos_metadata.write('{}\n'.format(media_id))
-        logging.info('New video found: {}'.format(media_id))
+        notification_msg = 'New video found in profile {}: {}'.format(profile_name, media_id)
+      logging.info(notification_msg)
       media_request = urllib2.Request(media_src)
       media_data = urllib2.urlopen(media_request).read()
-      media_file = open('insta_crawler/{}/{}/{}.png'.format(profile_name, media_type, media_id), 'w')
+      media_path = 'insta_crawler/{}/{}/{}.png'.format(profile_name, media_type, media_id)
+      media_file = open(media_path, 'w')
       media_file.write(media_data)
       media_file.close()
+      send_notification_by_mail(subject='{} has added new items to Instagram'.format(profile_name),
+                                message=notification_msg,
+                                image=media_path)
 
 
-logging.basicConfig(level=logging.INFO)
+def send_notification_by_mail(subject, message, image):
+  try:
+    parser = ConfigParser()
+    parser.read('insta_crawler.cfg')
+    smtp_host = parser.get('smtp', 'smtp_host')
+    smtp_port = parser.getint('smtp', 'smtp_port')
+    smtp_starttls = parser.getboolean('smtp', 'smtp_starttls')
+    smtp_ssl = parser.getboolean('smtp', 'smtp_ssl')
+    smtp_user = parser.get('smtp', 'smtp_user')
+    smtp_password = parser.get('smtp', 'smtp_password')
+    recipients = [recipient.strip() for recipient in parser.get('smtp', 'smtp_recipients').split(',')]
+
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = ', '.join(recipients)
+    msg['Subject'] = subject
+    msg.preamble = message
+    fp = open(image, 'rb')
+    img = MIMEImage(fp.read())
+    fp.close()
+    msg.attach(img)
+    srv = smtplib.SMTP_SSL(smtp_host, smtp_port) if smtp_ssl else smtplib.SMTP(smtp_host, smtp_port)
+    if smtp_starttls:
+      srv.starttls()
+    srv.login(smtp_user, smtp_password)
+    srv.sendmail(smtp_user, recipients, msg.as_string())
+    srv.quit()
+  except:
+    logging.error('Notification could not be send')
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--profile', help='Instagram profile name', required=True)

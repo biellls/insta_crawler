@@ -5,17 +5,13 @@ This python script crawls the landing page of an Instagram public profile and an
 
 With two separate metadata dictionaries, it tracks the images and videos downloaded to the local filesystem. If new images or videos appear in the landing page of the profile, the script downloads them and update the metadata dictionaries. **Note:** Currently the metadata ids for historical and latest extractions are different, so the files will be downloaded twice.
 
+When new media files are found it can send notifications by mail. To do so, a mailing configuration should be set up in the insta_crawler.cfg file.
+
 Requirements:
 Download phantomJS from the following website: https://bitbucket.org/ariya/phantomjs/downloads and copy the phantomjs executable to the same directory as insta_crawler. This is necessary for the historical extraction.
 This can be done by executing the configure script (currently only for Linux and OS X):
 ```
 ./configure
-```
-
-The following pip packages are necessary for the historical extraction:
-```
-pip install selenium
-pip install bs4
 ```
 
 Usage:
