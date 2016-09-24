@@ -56,7 +56,7 @@ def get_id(url):
 def get_image_name(url):
   """
   >>> get_image_name('https://someurl.com/foo/bar/myimg.jpg?ig_cache_key=mycachekey')
-  'myimg.jp'
+  'myimg.jpg'
   """
   return url.split('cache_key=')[-2].split('/')[-1].split('?')[0]
 
@@ -161,48 +161,49 @@ def send_notification_by_mail(subject, message, image):
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--profile', help='Instagram profile name', required=True)
-parser.add_argument('--historical', help='Perform historical extraction of n pages (12 images per page))')
-parser.add_argument('--clear-metadata', dest="clear_metadata", help='Clears all metadata files', action='store_true')
-args = parser.parse_args()
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--profile', help='Instagram profile name', required=True)
+  parser.add_argument('--historical', help='Perform historical extraction of n pages (12 images per page))')
+  parser.add_argument('--clear-metadata', dest="clear_metadata", help='Clears all metadata files', action='store_true')
+  args = parser.parse_args()
 
-profile_name = args.profile
-npages = args.historical
+  profile_name = args.profile
+  npages = args.historical
 
-images_dir = 'insta_crawler/{}/images/'.format(profile_name)
-if not os.path.exists(images_dir):
-  os.makedirs(images_dir)
-videos_dir = 'insta_crawler/{}/videos/'.format(profile_name)
-if not os.path.exists(videos_dir):
-  os.makedirs(videos_dir)
-historical_dir = 'insta_crawler/{}/historical/'.format(profile_name)
-if not os.path.exists(historical_dir):
-  os.makedirs(historical_dir)
+  images_dir = 'insta_crawler/{}/images/'.format(profile_name)
+  if not os.path.exists(images_dir):
+    os.makedirs(images_dir)
+  videos_dir = 'insta_crawler/{}/videos/'.format(profile_name)
+  if not os.path.exists(videos_dir):
+    os.makedirs(videos_dir)
+  historical_dir = 'insta_crawler/{}/historical/'.format(profile_name)
+  if not os.path.exists(historical_dir):
+    os.makedirs(historical_dir)
 
-images_metadata_path = 'insta_crawler/{}/.images'.format(profile_name)
-videos_metadata_path = 'insta_crawler/{}/.videos'.format(profile_name)
-if args.clear_metadata:
-  if os.path.isfile(images_metadata_path):
-    os.remove(images_metadata_path)
-  if os.path.isfile(videos_metadata_path):
-    os.remove(videos_metadata_path)
-  logging.info('Cleared metadata')
-  exit()
+  images_metadata_path = 'insta_crawler/{}/.images'.format(profile_name)
+  videos_metadata_path = 'insta_crawler/{}/.videos'.format(profile_name)
+  if args.clear_metadata:
+    if os.path.isfile(images_metadata_path):
+      os.remove(images_metadata_path)
+    if os.path.isfile(videos_metadata_path):
+      os.remove(videos_metadata_path)
+    logging.info('Cleared metadata')
+    exit()
 
-images_metadata = open(images_metadata_path, 'a+')
-images_metadata.seek(0)
-images = images_metadata.read().splitlines()
-videos_metadata = open(videos_metadata_path, 'a+')
-videos_metadata.seek(0)
-videos = videos_metadata.read().splitlines()
+  images_metadata = open(images_metadata_path, 'a+')
+  images_metadata.seek(0)
+  images = images_metadata.read().splitlines()
+  videos_metadata = open(videos_metadata_path, 'a+')
+  videos_metadata.seek(0)
+  videos = videos_metadata.read().splitlines()
 
-if args.historical is not None:
-  historical_extraction(profile_name, int(npages))
-else:
-  latest_extraction(profile_name)
+  if args.historical is not None:
+    historical_extraction(profile_name, int(npages))
+  else:
+    latest_extraction(profile_name)
 
-images_metadata.close()
-videos_metadata.close()
-logging.info('Process finished')
+  images_metadata.close()
+  videos_metadata.close()
+  logging.info('Process finished')
 
