@@ -18,7 +18,6 @@ from bs4 import BeautifulSoup
 
 
 LOAD_TIMEOUT_SECONDS = 15
-MAX_RETRIES = 5
 SCROLL_WAIT = 2
 
 
@@ -125,24 +124,23 @@ def load_full_page(profile, browser=None):
   - Click on "Load more" button"
   - Scroll to bottom to load more images
   - Stop when we have all the images
+  - Raise exception if images do not load
   """
   total_images = image_total(profile)
   browser = browser or get_phantomjs_browser()
   browser.get(build_instagram_url(profile))
   _load_more(browser)
   loaded_images = _num_loaded_images(browser)
-  retries = 0
   while loaded_images < total_images:
     _scroll_to_bottom(browser)
     time.sleep(SCROLL_WAIT)
-    logging.info("Scrolled to bottom. Loaded {} out of {} images".format(_num_loaded_images(browser), total_images))
+    logging.info(
+      "Scrolled to bottom. Loaded {} out of {} images".format(
+        _num_loaded_images(browser), total_images))
     previous_loaded_images = loaded_images
     loaded_images = _num_loaded_images(browser)
     if previous_loaded_images == loaded_images and loaded_images != total_images:
-      retries += 1
-      if retries == MAX_RETRIES:
-        logging.info("Cannot load full page")
-        raise Exception("Cannot load full page")
+      raise Exception("Cannot load full page")
   return browser.page_source
 
 
