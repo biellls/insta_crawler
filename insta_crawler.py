@@ -1,16 +1,25 @@
 import argparse
 import platform
-from selenium import webdriver
+import time
 import os
 import urllib2
 import re
 import json
 import logging
 import smtplib
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from ConfigParser import ConfigParser
 from bs4 import BeautifulSoup
+
+
+LOAD_TIMEOUT_SECONDS = 15
+MAX_RETRIES = 5
+SCROLL_WAIT = 2
 
 
 def _get_phantomjs_path_for_platform():
@@ -33,8 +42,8 @@ def get_rendered_javascript(url, browser=None):
 
 def get_max_id(html):
   search_obj = re.search('max_id=([0-9]+)">', html)
-  json_obj = json.loads(search_obj.group(1))
-  return json_obj
+  return json.loads(search_obj.group(1))
+  return None if search_obj is None else json.loads(search_obj.group(1))
 
 
 def build_instagram_url(profile, max_id=None):
@@ -63,14 +72,14 @@ def get_image_name(url):
 
 def get_image_urls(html):
   soup = BeautifulSoup(html, "html.parser")
-  imgs = [soup.find("img", {"id": "pImage_0"})['src']]
-  for i in range(1, 12):
-    imgs.append(soup.find("img", {"id": "pImage_{}".format(i)})['src'])
-  return imgs
+  imgs = soup.find_all("img", {"id": re.compile("pImage_[\d]+")})
+  return [img['src'] for img in imgs]
 
 
 def download_images(html):
   imgurls = get_image_urls(html)
+  total_downloaded = 0
+  nimages = len(imgurls)
   for imgurl in imgurls:
     media_id = get_id(imgurl)
     if media_id not in images:
@@ -82,24 +91,86 @@ def download_images(html):
       media_file = open('insta_crawler/{}/historical/{}.png'.format(profile_name, imgname), 'w')
       media_file.write(media_data)
       media_file.close()
+    total_downloaded += 1
+    logging.info("Downloaded {} out of {} images".format(total_downloaded, nimages))
+  return len(imgurls)
+
+def image_total(profile):
+  response = urllib2.urlopen(build_instagram_url(profile))
+  html = response.read()
+  search_obj = re.search('sharedData = (.*);', html)
+  json_obj = json.loads(search_obj.group(1))
+  return json_obj['entry_data']['ProfilePage'][0]['user']['media']['count']
 
 
-def historical_extraction(profile, npages):
+def _load_more(browser):
+  WebDriverWait(browser, LOAD_TIMEOUT_SECONDS).until(
+    EC.presence_of_element_located((By.LINK_TEXT, "Load more"))
+  )
+  browser.find_element_by_link_text("Load more").click()
+
+
+def _num_loaded_images(browser):
+  return len(get_image_urls(browser.page_source))
+
+
+def _scroll_to_bottom(browser):
+  browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+
+def load_full_page(profile, browser=None):
+  """ Returns rendered HTML for the full page
+  Actions performed to get full HTML:
+  - Render initial page
+  - Click on "Load more" button"
+  - Scroll to bottom to load more images
+  - Stop when we have all the images
+  """
+  total_images = image_total(profile)
+  browser = browser or get_phantomjs_browser()
+  browser.get(build_instagram_url(profile))
+  _load_more(browser)
+  loaded_images = _num_loaded_images(browser)
+  retries = 0
+  while loaded_images < total_images:
+    _scroll_to_bottom(browser)
+    time.sleep(SCROLL_WAIT)
+    logging.info("Scrolled to bottom. Loaded {} out of {} images".format(_num_loaded_images(browser), total_images))
+    previous_loaded_images = loaded_images
+    loaded_images = _num_loaded_images(browser)
+    if previous_loaded_images == loaded_images and loaded_images != total_images:
+      retries += 1
+      if retries == MAX_RETRIES:
+        logging.info("Cannot load full page")
+        raise Exception("Cannot load full page")
+  return browser.page_source
+
+
+def historical_extraction(profile):
+  """ Performs a full extraction """
+  logging.info("Retrieving all images from profile: {}".format(profile))
   browser = get_phantomjs_browser()
+  nimages = image_total(profile)
   url = build_instagram_url(profile)
   html = get_rendered_javascript(url, browser)
-  download_images(html)
-  while npages > 1:
+  total_downloaded = download_images(html)
+  while total_downloaded < nimages:
     max_id = get_max_id(html)
+    logging.info("Max id: {}".format(max_id))
     url = build_instagram_url(profile, max_id)
     html = get_rendered_javascript(url, browser)
-    download_images(html)
-    npages -= 1
+    downloaded = download_images(html)
+    total_downloaded += downloaded
+
+
+def historical_extraction(profile):
+  full_page = load_full_page(profile)
+  download_images(full_page)
 
 
 def latest_extraction(profile):
   logging.info('Crawling latest profile information...')
-  response = urllib2.urlopen('https://www.instagram.com/{}/'.format(profile))
+  response = urllib2.urlopen(build_instagram_url(profile))
   html = response.read()
   search_obj = re.search('sharedData = (.*);', html)
   json_obj = json.loads(search_obj.group(1))
@@ -164,12 +235,11 @@ logging.basicConfig(level=logging.INFO,
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--profile', help='Instagram profile name', required=True)
-  parser.add_argument('--historical', help='Perform historical extraction of n pages (12 images per page))')
+  parser.add_argument('--historical', help='Perform historical extraction of n pages (12 images per page))', action='store_true')
   parser.add_argument('--clear-metadata', dest="clear_metadata", help='Clears all metadata files', action='store_true')
   args = parser.parse_args()
 
   profile_name = args.profile
-  npages = args.historical
 
   images_dir = 'insta_crawler/{}/images/'.format(profile_name)
   if not os.path.exists(images_dir):
@@ -198,8 +268,8 @@ if __name__ == '__main__':
   videos_metadata.seek(0)
   videos = videos_metadata.read().splitlines()
 
-  if args.historical is not None:
-    historical_extraction(profile_name, int(npages))
+  if args.historical:
+    historical_extraction(profile_name)
   else:
     latest_extraction(profile_name)
 

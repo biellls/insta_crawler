@@ -1,2 +1,4 @@
 selenium==2.53.6
 bs4==0.0.1
+unittest2==1.1.0
+mock==2.0.0
