@@ -13,7 +13,7 @@ from ConfigParser import ConfigParser
 from bs4 import BeautifulSoup
 
 
-def __get_phantomjs_path_for_platform():
+def _get_phantomjs_path_for_platform():
   if platform.system() == 'Windows':
     return './phantomjs.exe'
   else:
@@ -21,7 +21,7 @@ def __get_phantomjs_path_for_platform():
 
 
 def get_phantomjs_browser():
-  PHANTOMJS_PATH = __get_phantomjs_path_for_platform()
+  PHANTOMJS_PATH = _get_phantomjs_path_for_platform()
   return webdriver.PhantomJS(PHANTOMJS_PATH)
 
 
