@@ -147,23 +147,6 @@ def load_full_page(profile, browser=None):
 
 
 def historical_extraction(profile):
-  """ Performs a full extraction """
-  logging.info("Retrieving all images from profile: {}".format(profile))
-  browser = get_phantomjs_browser()
-  nimages = image_total(profile)
-  url = build_instagram_url(profile)
-  html = get_rendered_javascript(url, browser)
-  total_downloaded = download_images(html)
-  while total_downloaded < nimages:
-    max_id = get_max_id(html)
-    logging.info("Max id: {}".format(max_id))
-    url = build_instagram_url(profile, max_id)
-    html = get_rendered_javascript(url, browser)
-    downloaded = download_images(html)
-    total_downloaded += downloaded
-
-
-def historical_extraction(profile):
   full_page = load_full_page(profile)
   download_images(full_page)
 
