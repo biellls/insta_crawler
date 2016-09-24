@@ -46,10 +46,18 @@ def build_instagram_url(profile, max_id=None):
 
 
 def get_id(url):
+  """
+  >>> get_id('https://someurl.com/foo/bar/myimg.jpg?ig_cache_key=mycachekey')
+  'mycachekey'
+  """
   return url.split('cache_key=')[-1]
 
 
 def get_image_name(url):
+  """
+  >>> get_image_name('https://someurl.com/foo/bar/myimg.jpg?ig_cache_key=mycachekey')
+  'myimg.jp'
+  """
   return url.split('cache_key=')[-2].split('/')[-1].split('?')[0]
 
 
