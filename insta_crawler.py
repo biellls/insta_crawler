@@ -82,7 +82,8 @@ def download_images(html):
   for imgurl in imgurls:
     media_id = get_id(imgurl)
     if media_id not in images:
-      logging.info('New image found: {}'.format(media_id))
+      notification_msg = 'New image found in profie {}: {}'.format(profile_name, media_id)
+      logging.info(notification_msg)
       images_metadata.write('{}\n'.format(media_id))
       media_request = urllib2.Request(imgurl)
       media_data = urllib2.urlopen(media_request).read()
@@ -90,6 +91,9 @@ def download_images(html):
       media_file = open('insta_crawler/{}/historical/{}.png'.format(profile_name, imgname), 'w')
       media_file.write(media_data)
       media_file.close()
+      send_notification_by_mail(subject='{} has added new items to Instagram'.format(profile_name),
+                                message=notification_msg,
+                                image=imgname)
     total_downloaded += 1
     logging.info("Downloaded {} out of {} images".format(total_downloaded, nimages))
   return len(imgurls)
@@ -208,7 +212,7 @@ def send_notification_by_mail(subject, message, image):
     srv.sendmail(smtp_user, recipients, msg.as_string())
     srv.quit()
   except:
-    logging.error('Notification could not be send')
+    logging.error('Notification could not be sent')
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
